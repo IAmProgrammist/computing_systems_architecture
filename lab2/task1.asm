@@ -9,9 +9,9 @@ includelib	kernel32.lib
 includelib	msvcrt.lib
  
 .data
-	x dw 200
+	x dw -10
 	y dw 7
-	z dw 12
+	z dw -14
 	output_str db "x = %hd, y = %hd, z = %hd, res = %d, edx = %d.", 0
 
 
@@ -44,12 +44,9 @@ start:
 	
 	push edx
 	push eax
-	movsx edx, x
-	push edx
-	movsx edx, y
-	push edx
-	movsx edx, z
-	push edx
+	push dword ptr x
+	push dword ptr y
+	push dword ptr z
 	push offset output_str
 	call crt_printf
 	add esp, 4*6
