@@ -13,7 +13,8 @@ includelib	msvcrt.lib
 .data
 	q dd 15.0
 	num_pow dd 2.0
-	print_fmt db "%.6f", 0
+	print_step db "S = %.6f, n = %.6f", 13, 10, 0
+	print_fmt db "%.6f", 13, 10, 0
 .code
 
 ; Осторожно! В стеке для FPU должно быть свободно 4 элемента для вычислений.
@@ -31,12 +32,22 @@ pow proc
 	fxam
 	fstsw ax
 	sahf
-	jpe   pow_C2is1    ; Если C2 = 1
+	jz  pow_ok  
+	jpe pow_C2is1    ; Если C2 = 1
+	jc  pow_is_nan   ; Если получили isNan, то x и y = 0, а значит нужно вернуть 1.
 	jmp pow_ok
 
 	pow_C2is1:
 	jc    pow_infinity
 	jmp pow_ok
+
+	pow_is_nan:
+	; У нас infinity может случиться только если у нас x = 0. В этом случае надо бы возвращать 0.
+	ffree ST(0)
+	fincstp
+	fld1
+	popad
+	ret 8
 
 	pow_infinity:
 	; У нас infinity может случиться только если у нас x = 0. В этом случае надо бы возвращать 0.
@@ -97,17 +108,28 @@ start:
 	fld1 ; S(1) = n = 1
 	fldz ; S(0) = 0 = S (1)
 
-	mov eax, dword ptr num_pow
-	mov ebx, dword ptr q
-	mov ecx, 10000000
+	mov ecx, 50
 
 	cycle:
+		sub esp, 16
+		fst qword ptr [esp]
+		fxch
+		fst qword ptr [esp + 8]
+		fxch
+		mov esi, ecx
+		push offset print_step
+		call crt_printf
+		add esp, 20
+		mov ecx, esi
+
 		fld1                 ; ST(0) = 1, ST(1) = S, ST(2) = n
 		fld ST(2)            ; ST(0) = n, ST(1) = 1, ST(2) = S, ST(3) = n
 		fpatan               ; ST(0) = atan(1 / n), ST(1) = S, ST(2) = n
 		faddp ST(1), ST(0)   ; ST(0) = S + atan(1 / n) = S, ST(1) = n
 		fld ST(1)            ; ST(0) = n, ST(1) = S + atan(1 / n) = S, ST(2) = n
 		sub esp, 8
+		mov eax, dword ptr num_pow
+		mov ebx, dword ptr q
 		fstp dword ptr [esp] ; ST(0) = S + atan(1 / n) = S, ST(1) = n
 		mov dword ptr [esp + 4], eax
 		call pow             ; ST(0) = n ^ 2, ST(1) = S + atan(1 / n) = S, ST(2) = n
@@ -133,7 +155,7 @@ start:
 	ffree ST(0)
 	fincstp
 
-	sub esp, 4
+	sub esp, 8
 	fstp qword ptr [esp]
 	push offset print_fmt
 	call crt_printf

@@ -11,8 +11,9 @@ includelib	msvcrt.lib
 ; Здесь Бога нет
 
 .data
-	x dd -9.0
-	y dd -1.5
+	x dd 0.00001
+	y dd 0.00001
+	print_val db "%.6f", 13, 10, 0
 .code
 
 
@@ -31,12 +32,22 @@ pow proc
 	fxam
 	fstsw ax
 	sahf
-	jpe   pow_C2is1    ; Если C2 = 1
+	jz  pow_ok  
+	jpe pow_C2is1    ; Если C2 = 1
+	jc  pow_is_nan   ; Если получили isNan, то x и y = 0, а значит нужно вернуть 1.
 	jmp pow_ok
 
 	pow_C2is1:
 	jc    pow_infinity
 	jmp pow_ok
+
+	pow_is_nan:
+	; У нас infinity может случиться только если у нас x = 0. В этом случае надо бы возвращать 0.
+	ffree ST(0)
+	fincstp
+	fld1
+	popad
+	ret 8
 
 	pow_infinity:
 	; У нас infinity может случиться только если у нас x = 0. В этом случае надо бы возвращать 0.
@@ -93,9 +104,16 @@ pow_y_end:
 pow endp
 
 start: 
+	finit
 	push y
 	push x
 	call pow
+
+	sub esp, 8
+	fstp qword ptr [esp]
+	push offset print_val
+	call crt_printf
+	add esp, 12
 
 	call crt__getch 	; Задержка ввода, getch()
 	; Вызов функции ExitProcess(0)
