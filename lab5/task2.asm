@@ -127,14 +127,30 @@ start:
 		fpatan               ; ST(0) = atan(1 / n), ST(1) = S, ST(2) = n
 		faddp ST(1), ST(0)   ; ST(0) = S + atan(1 / n) = S, ST(1) = n
 		fld ST(1)            ; ST(0) = n, ST(1) = S + atan(1 / n) = S, ST(2) = n
+
+		sub esp, 44
+		fst dword ptr [esp]
+		fstp tbyte ptr [esp + 4]
+		fstp tbyte ptr [esp + 14]
+		fstp tbyte ptr [esp + 24]
+		
 		sub esp, 8
 		mov eax, dword ptr num_pow
 		mov ebx, dword ptr q
-		fstp dword ptr [esp] ; ST(0) = S + atan(1 / n) = S, ST(1) = n
+		mov ebp, dword ptr [esp + 8]
+		mov dword ptr [esp], ebp
 		mov dword ptr [esp + 4], eax
+
 		call pow             ; ST(0) = n ^ 2, ST(1) = S + atan(1 / n) = S, ST(2) = n
-		fld ST(2)
-		sub esp, 8
+
+		fstp tbyte ptr [esp + 34]
+
+		fld tbyte ptr [esp + 24]
+		fld tbyte ptr [esp + 14]
+		fld tbyte ptr [esp + 4]
+		fld tbyte ptr [esp + 34]
+		add esp, 36
+
 		mov dword ptr [esp], ebx
 		fstp dword ptr [esp + 4]
 		call pow             ; ST(0) = q^2, ST(1) = n ^ 2, ST(2) = S + atan(1 / n) = S, ST(3) = n
@@ -149,7 +165,8 @@ start:
 		fld1                 ; ST(0) = 1, ST(1) = n, ST(2) = S + atan(1 / n) + (n - 1) / (n ^ 2 + q ^ 2)
 		faddp ST(1), ST(0)   ; ST(0) = n + 1, ST(1) = S + atan(1 / n) + (n - 1) / (n ^ 2 + q ^ 2)
 		fxch                 ; ST(0) = S, ST(1) = n + 1
-	loop cycle
+	dec ecx
+	jne cycle
 
 	fxch
 	ffree ST(0)
