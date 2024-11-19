@@ -11,172 +11,124 @@ includelib	msvcrt.lib
 ; Здесь Бога нет тем более
 
 .data
-	q dd 15.0
-	num_pow dd 2.0
-	print_step db "S = %.6f, n = %.6f", 13, 10, 0
-	print_fmt db "%.6f", 13, 10, 0
+	value db 00h, 00h, 00h, 00h, 0h, 0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h, 0h
+	n dd 4
+	res db 36 dup(?) 
+	get_value_fmt db "%08x %08x %08x %08x %08x %08x %08x %08x %08x", 0
+	print_value_fmt db "%08x %08x %08x %08x %08x %08x %08x %08x %08x", 13, 10, 0
+	get_n_fmt db "%d", 0
 .code
 
-; Осторожно! В стеке для FPU должно быть свободно 4 элемента для вычислений.
-; pow (float x, float y)
-pow proc
+; 36 байт
+; division (char *a, int n, char* res);
+division proc
 	pushad
-
-	fld dword ptr [esp + 8 + 8 * 4] ; y получаем из параметров. S(0) = y
-	fabs ; y = |y|
-	fld dword ptr [esp + 4 + 8 * 4] ; x получаем из параметров. S(0) = x, S(1) = y
-	fabs ; x = |x|
-
-	; Вычислим t = ylog_2(x)
-	fyl2x ; S(0) = ylog_2(x)
-	fxam
-	fstsw ax
-	sahf
-	jz  pow_ok  
-	jpe pow_C2is1    ; Если C2 = 1
-	jc  pow_is_nan   ; Если получили isNan, то x и y = 0, а значит нужно вернуть 1.
-	jmp pow_ok
-
-	pow_C2is1:
-	jc    pow_infinity
-	jmp pow_ok
-
-	pow_is_nan:
-	; У нас infinity может случиться только если у нас x = 0. В этом случае надо бы возвращать 0.
-	ffree ST(0)
-	fincstp
-	fld1
-	popad
-	ret 8
-
-	pow_infinity:
-	; У нас infinity может случиться только если у нас x = 0. В этом случае надо бы возвращать 0.
-	ffree ST(0)
-	fincstp
-	fldz
-	popad
-	ret 8
-
-pow_ok:
+	mov ebp, dword ptr [esp + 4 + 8 * 4]   ; ebp - адрес a
+	mov eax, dword ptr [esp + 12 + 8 * 4]  ; eax - адрес res
 	
-	fld1 ; S(0) = 1; S(1) = ylog_2(x)
-	fscale ; S(0) = S(0) * 2 ^ S(1); S(1) = ylog_2(x)
+	; Копируем данные в res
+	mov ecx, 0
+	division_copy_cycle:
+	mov dh, byte ptr [ebp + ecx]
+	mov byte ptr [eax + ecx], dh
+	inc ecx
+	cmp ecx, 36
+	jl division_copy_cycle
 
-	fld1 ; S(0) = 1; S(1) = 2 ^ a; S(2) = ylog_2(x)
-	fld ST(2) ; S(0) = ylog_2(x); S(1) = 1; S(2) = 2 ^ a; S(3) = ylog_2(x)
-	fprem ; S(0) = ylog_2(x) % 1 = b; S(1) = 1; S(2) = 2 ^ a; S(3) = ylog_2(x)
-	f2xm1 ; S(0) = 2 ^ b - 1; S(1) = 1; S(2) = 2 ^ a; S(3) = ylog_2(x)
-	faddp ST(1), ST(0) ; S(0) = 2 ^ b; S(1) = 2 ^ a; S(2) = ylog_2(x)
-	fmulp ST(1), ST(0) ; S(0) = 2 ^ a * 2 ^ b; S(1) = ylog_2(x)
+	; В счётчик пишем n
+	mov ecx, dword ptr [esp + 8 + 8 * 4]
+	cmp ecx, 0
 
-	fldz                            ; ST(0) = 0; S(1) = 2 ^ a * 2 ^ b; S(2) = ylog_2(x)
-	fld dword ptr [esp + 4 + 8 * 4] ; ST(0) = x, ST(1) = 0; S(2) = 2 ^ a * 2 ^ b; S(3) = ylog_2(x)
-	fcompp   ; Сравнение x с 0 и выталкивание переменных из стека
-	fstsw ax ; Загрузка swr в ax
-	sahf     ; Загрузка ah в eflags. Теперь можем сравнивать.
-	fld1     ; S(0) = sign_x
-	jb pow_x_less_zero
-	jmp pow_x_end
-pow_x_less_zero:
-	fchs   ; S(0) = -S(0) = sign_x
-pow_x_end:
+	jle division_immediate_end
 
-	; ST(0) = sign_x; S(1) = 2 ^ a * 2 ^ b; S(2) = ylog_2(x)
-
-	fmulp ST(1), ST(0) ; S(0) = sign_x * 2 ^ a * 2 ^ b; S(1) = ylog_2x
-	fxch               ; S(0) = ylog_2x; S(1) = sign_x * 2 ^ a * 2 ^ b
-	ffree ST(0)        
-	fincstp            ; S(0) = sign_x * 2 ^ a * 2 ^ b
-	fldz                            ; S(0) = 0; S(1) = sign_x * 2 ^ a * 2 ^ b
-	fld dword ptr [esp + 8 + 8 * 4] ; S(0) = y; S(1) = 0; S(2) = sign_x * 2 ^ a * 2 ^ b
-	fcompp ; S(0) = sign_x * 2 ^ a * 2 ^ b
-	fstsw ax ; Загрузка swr в ax
-	sahf     ; Загрузка ah в eflags. Теперь можем сравнивать.
-	jb pow_y_less_zero
-	jmp pow_y_end
-pow_y_less_zero:
-	fld1                 ; S(0) = 1; S(1) = x ^ |y|
-	fdivrp ST(1), ST(0)  ; S(0) = 1 / x ^ |y| = x ^ y.
-pow_y_end:
-
+	division_shift_cycle_n:
+	; Сохраняем текущий счётчик в edx
+	mov edx, ecx
+	mov ecx, 35
+	
+	; Сброс CF флага
+	clc
+	pushfd
+	division_shift_cycle_shift:
+	; Восстанавливаем CF
+	popfd
+	jc significant_set
+	jmp significant_not_set
+	significant_set:
+	; Если CF установлен, тогда будем добавлять перенесённый бит
+	shr byte ptr [eax + ecx], 1
+	; Сохраняем флаги
+	pushfd
+	; Добавляем перенесённый бит
+	add byte ptr [eax + ecx], 10000000b
+	jmp significant_end
+	significant_not_set:
+	; Если CF не установлен, просто выполняем сдвиг
+	shr byte ptr [eax + ecx], 1
+	; Сохраняем флаги
+	pushfd
+	jmp significant_end
+	significant_end:
+	
+	; У нас 36 байтов, поэтому проверяем
+	dec ecx
+	jge division_shift_cycle_shift
+	popfd
+	
+	mov ecx, edx
+	dec ecx
+	jne division_shift_cycle_n
+	
+	division_immediate_end:
 	popad
-	ret 8
-pow endp
+	ret 12
+division endp
 
 start: 
-	finit ; Инициализация сопроцессора
-	fld1 ; S(1) = n = 1
-	fldz ; S(0) = 0 = S (1)
+	push offset value
+	push offset value + 4
+	push offset value + 8
+	push offset value + 12
+	push offset value + 16
+	push offset value + 20
+	push offset value + 24
+	push offset value + 28
+	push offset value + 32
+	push offset get_value_fmt
+	call crt_scanf
+	add esp, 40
 
-	mov ecx, 50
-
-	cycle:
-		sub esp, 16
-		fst qword ptr [esp]
-		fxch
-		fst qword ptr [esp + 8]
-		fxch
-		mov esi, ecx
-		push offset print_step
-		call crt_printf
-		add esp, 20
-		mov ecx, esi
-
-		fld1                 ; ST(0) = 1, ST(1) = S, ST(2) = n
-		fld ST(2)            ; ST(0) = n, ST(1) = 1, ST(2) = S, ST(3) = n
-		fpatan               ; ST(0) = atan(1 / n), ST(1) = S, ST(2) = n
-		faddp ST(1), ST(0)   ; ST(0) = S + atan(1 / n) = S, ST(1) = n
-		fld ST(1)            ; ST(0) = n, ST(1) = S + atan(1 / n) = S, ST(2) = n
-
-		sub esp, 44
-		fst dword ptr [esp]
-		fstp tbyte ptr [esp + 4]
-		fstp tbyte ptr [esp + 14]
-		fstp tbyte ptr [esp + 24]
-		
-		sub esp, 8
-		mov eax, dword ptr num_pow
-		mov ebx, dword ptr q
-		mov ebp, dword ptr [esp + 8]
-		mov dword ptr [esp], ebp
-		mov dword ptr [esp + 4], eax
-
-		call pow             ; ST(0) = n ^ 2, ST(1) = S + atan(1 / n) = S, ST(2) = n
-
-		fstp tbyte ptr [esp + 34]
-
-		fld tbyte ptr [esp + 24]
-		fld tbyte ptr [esp + 14]
-		fld tbyte ptr [esp + 4]
-		fld tbyte ptr [esp + 34]
-		add esp, 36
-
-		mov dword ptr [esp], ebx
-		fstp dword ptr [esp + 4]
-		call pow             ; ST(0) = q^2, ST(1) = n ^ 2, ST(2) = S + atan(1 / n) = S, ST(3) = n
-		faddp ST(1), ST(0)   ; ST(0) = n ^ 2 + q ^ 2, ST(1) = S + atan(1 / n) = S, ST(2) = n
-		
-		fld1                 ; ST(0) = 1, ST(1) = n ^ 2 + q ^ 2, ST(2) = S + atan(1 / n) = S, ST(3) = n
-		fld ST(3)            ; ST(0) = n, ST(1) = 1, ST(2) = n ^ 2 + q ^ 2, ST(3) = S + atan(1 / n) = S, ST(4) = n
-		fsubrp ST(1), ST(0)  ; ST(0) = n - 1, ST(1) = n ^ 2 + q ^ 2, ST(2) = S + atan(1 / n) = S, ST(3) = n
-		fdivrp ST(1), ST(0)  ; ST(0) = (n - 1) / (n ^ 2 + q ^ 2), ST(1) = S + atan(1 / n) = s, ST(2) = n
-		faddp ST(1), ST(0)   ; ST(0) = S + atan(1 / n) + (n - 1) / (n ^ 2 + q ^ 2), ST(1) = n
-		fxch                 ; ST(0) = n, ST(1) = S + atan(1 / n) + (n - 1) / (n ^ 2 + q ^ 2)
-		fld1                 ; ST(0) = 1, ST(1) = n, ST(2) = S + atan(1 / n) + (n - 1) / (n ^ 2 + q ^ 2)
-		faddp ST(1), ST(0)   ; ST(0) = n + 1, ST(1) = S + atan(1 / n) + (n - 1) / (n ^ 2 + q ^ 2)
-		fxch                 ; ST(0) = S, ST(1) = n + 1
-	dec ecx
-	jne cycle
-
-	fxch
-	ffree ST(0)
-	fincstp
-
-	sub esp, 8
-	fstp qword ptr [esp]
-	push offset print_fmt
-	call crt_printf
+	push offset n
+	push offset get_n_fmt
+	call crt_scanf
 	add esp, 8
+
+	push offset res
+	push n
+	push offset value
+	call division
+
+	lea ebp, res
+	mov eax, dword ptr [ebp]
+	push eax
+	mov eax, dword ptr [ebp + 4]
+	push eax
+	mov eax, dword ptr [ebp + 8]
+	push eax
+	mov eax, dword ptr [ebp + 12]
+	push eax
+	mov eax, dword ptr [ebp + 16]
+	push eax
+	mov eax, dword ptr [ebp + 20]
+	push eax
+	mov eax, dword ptr [ebp + 24]
+	push eax
+	mov eax, dword ptr [ebp + 28]
+	push eax
+	mov eax, dword ptr [ebp + 32]
+	push eax
+	push offset print_value_fmt
+	call crt_printf
 
 	call crt__getch 	; Задержка ввода, getch()
 	; Вызов функции ExitProcess(0)
