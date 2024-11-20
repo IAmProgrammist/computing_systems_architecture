@@ -10,7 +10,7 @@ includelib	msvcrt.lib
 
 .data
 	max_num dw 4095
-	print_digit db "%d%d%d%d%d%d %d%d%d%d%d%d", 13, 10, 0
+	print_digit db "%d: %d%d%d%d%d%d %d%d%d%d%d%d", 13, 10, 0
 .code
 
 ; output (short a)
@@ -64,10 +64,9 @@ cycle:
 	jmp dont_print
 
 	print_val:
-
 	movsx eax, word ptr [esp + 8 * 4 + 1 * 2]
 	push eax
-	movsx eax, word ptr [esp + 8 * 4 + 2 * 2 + 4]
+	movsx eax, word ptr [esp + 8 * 4 + 2 * 2 + 4 * 1]
 	push eax
 	movsx eax, word ptr [esp + 8 * 4 + 3 * 2 + 4 * 2]
 	push eax
@@ -89,25 +88,51 @@ cycle:
 	push eax
 	movsx eax, word ptr [esp + 8 * 4 + 12 * 2 + 4 * 11]
 	push eax
+	movsx eax, word ptr [esp + 8 * 4 + 13 * 2 + 4 + 2 + 4 * 12]
+	push eax
 	push offset print_digit
 	call crt_printf
-	add esp, 52
+	add esp, 56
 
 	dont_print:
 
 	; Восстановление регистров
 	popad
+	cmp word ptr [esp], 3
+
+	je output_ret_true
+	jmp output_ret_false
+	output_ret_true:
+	mov eax, 1
+	jmp output_ret_end
+	output_ret_false:
+	mov eax, 0
+	jmp output_ret_end
+	output_ret_end:
+
+
 	add esp, 13 * 2
-	ret 2
+	ret 4
 output endp
 
 start: 
+	mov dx, 1
 	mov cx, max_num
 	main_cycle:
 	
 	mov ax, cx
+	push dx
 	push ax
 	call output
+
+	cmp eax, 1
+	je increase_counter
+	jmp increase_counter_end
+
+	increase_counter:
+	add dx, 1
+	increase_counter_end:
+
 
 	dec cx
 	jge main_cycle
