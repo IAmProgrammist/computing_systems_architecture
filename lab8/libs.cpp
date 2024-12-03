@@ -4,9 +4,11 @@
 
 #pragma comment(lib, "libs.lib")
 
-extern "C" __declspec(dllimport) int _stdcall  sort_stdcall_noarg(int* a, int length, int* pos_res, int* neg_res, int* neg_count);
-extern "C" __declspec(dllimport) int _cdecl    sort_cdecl_noarg(int* a, int length, int* pos_res, int* neg_res, int* neg_count);
-extern "C" __declspec(dllimport) int _fastcall sort_fastcall_noarg(int* a, int length, int* pos_res, int* neg_res, int* neg_count);
+extern "C" __declspec(dllimport) int _stdcall  sort_stdcall_noarg  (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
+extern "C" __declspec(dllimport) int _cdecl    sort_cdecl_noarg    (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
+extern "C" __declspec(dllimport) int _fastcall sort_fastcall_noarg (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
+extern "C" __declspec(dllimport) int _stdcall  sort_stdcall        (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
+extern "C" __declspec(dllimport) int _cdecl    sort_cdecl          (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
 
 template <typename TestedFunction>
 void test_function1(TestedFunction func_to_test) {
@@ -153,10 +155,11 @@ void test_function(TestedFunction func_to_test) {
 }
 
 int main() {
+	test_function(sort_cdecl);
+	test_function(sort_stdcall);
+	test_function(sort_fastcall_noarg);
 	test_function(sort_stdcall_noarg);
-	//test_function(sort_cdecl_noarg);
-	sort_fastcall_noarg(NULL, 2, NULL, NULL, NULL);
-	sort_cdecl_noarg(NULL, 2, NULL, NULL, NULL);
+	test_function(sort_cdecl_noarg);
 
 	return 0;
 }
