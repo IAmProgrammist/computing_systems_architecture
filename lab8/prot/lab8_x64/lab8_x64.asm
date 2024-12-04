@@ -4,6 +4,9 @@ EXTERN printf: PROC
 
 ; int sort_fastcall_x64 (int* a, int length, int* pos_res, int* neg_res, int* neg_count)
 sort_fastcall_x64 proc
+    push rdi
+    push rsi
+    push rbx
     push rbp
     ; rcx = a
     ; edx = length
@@ -11,7 +14,7 @@ sort_fastcall_x64 proc
     ; r9 = neg_res
 
     ; neg_count = 0
-    mov rdi, qword ptr [rsp + 8 + 40]
+    mov rdi, qword ptr [rsp + 32 + 40]
     mov dword ptr [rdi], 0
 
     ; Используемые аргументы
@@ -109,7 +112,7 @@ sort_fastcall_x64_current_pos_zero_more_loop_end:
 sort_fastcall_x64_current_pos_zero_less:
             ; rsi = neg_res
             ; swap a
-            mov rdi, qword ptr [rsp + 8 + 16 + 40]
+            mov rdi, qword ptr [rsp + 32 + 16 + 40]
             xor eax, dword ptr [rdi]
             xor dword ptr [rdi], eax 
             xor eax, dword ptr [rdi]
@@ -182,7 +185,7 @@ sort_fastcall_x64_current_pos_zero_less_loop_end:
             ; pos_count++
             inc rax
             ; swap b
-            mov rdi, qword ptr [rsp + 8 + 16 + 40]
+            mov rdi, qword ptr [rsp + 32 + 16 + 40]
             xor eax, dword ptr [rdi]
             xor dword ptr [rdi], eax 
             xor eax, dword ptr [rdi]
@@ -198,7 +201,11 @@ sort_fastcall_x64_current_pos_zero_end:
         jl sort_fastcall_x64_loop_a
 
     add rsp, 16
+
     pop rbp
+    pop rbx
+    pop rsi
+    pop rdi
     ret
 sort_fastcall_x64 endp
 
