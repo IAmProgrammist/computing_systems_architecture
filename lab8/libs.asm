@@ -912,7 +912,7 @@ sort_cdecl_current_pos_zero_more_loop_end:
 
 sort_cdecl_current_pos_zero_less:
             ; esi = neg_res
-            ; swap a
+            ; swap pos_count, neg_count
             mov edi, [neg_count]
             xor eax, dword ptr [edi]
             xor dword ptr [edi], eax 
@@ -972,7 +972,7 @@ sort_cdecl_current_pos_zero_less_loop_current_end:
                 jmp sort_cdecl_current_pos_zero_less_loop
 
 sort_cdecl_current_pos_zero_less_loop_end:
-            ; esi = pos_res
+            ; esi = pos_count, neg_count
             mov esi, [neg_res]
             ; current_comparing = pos_res
             lea edi, dword ptr [esi]
@@ -985,7 +985,7 @@ sort_cdecl_current_pos_zero_less_loop_end:
 
 
             inc eax
-            ; swap b
+            ; swap pos_count, neg_count
             mov edi, [neg_count]
             xor eax, dword ptr [edi]
             xor dword ptr [edi], eax 
