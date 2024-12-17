@@ -23,7 +23,7 @@ includelib dbghelp.lib
 	callers db 1024 dup(?)
 	printtracemodule db "Module begin address: 0x%p", 13, 10
 	db "Module name: %s", 13, 10, 0
-	symgetsymfromaddr64failedmsg db "SymGetLineFromAddr64 failed. Exit code: %d", 13, 10, 0
+	symgetsymfromaddr64failedmsg db "SymGetLineFromAddr failed. Exit code: %d", 13, 10, 0
 	symgetsymfromaddr64subprogram db "Subprogram name: %s, Instruction offset from function beginning: %u", 13, 10, 0
 	symgetlinefromaddrloc db "Subprogram '%s' is located at '%s'", 13, 10
 	db "Address: 0x%p", 13, 10
