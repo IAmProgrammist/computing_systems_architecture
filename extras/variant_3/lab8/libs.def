@@ -1,8 +1,8 @@
 LIBRARY libs
 EXPORTS
 
-_sort_stdcall_noarg@20 = _sort_stdcall_noarg@0
+_sort_stdcall_noarg@16 = _sort_stdcall_noarg@0
 _sort_cdecl_noarg = _sort_cdecl_noarg@0
-@sort_fastcall_noarg@20 = _sort_fastcall_noarg@0
+@sort_fastcall_noarg@16 = _sort_fastcall_noarg@0
 sort_cdecl
 sort_stdcall
