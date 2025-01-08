@@ -8,8 +8,6 @@ include msvcrt.inc
 includelib	kernel32.lib
 includelib	msvcrt.lib
 
-; Здесь Бога нет тем более
-
 .data
 	value db 0h, 0h, 0h, 0h, 0h, 0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h, 0h,0h
 	n dd 4
