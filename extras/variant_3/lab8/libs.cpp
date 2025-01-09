@@ -7,9 +7,9 @@
 
 extern "C" __declspec(dllimport) int* _stdcall  sort_stdcall_noarg  (int* a, int start, int end, int* res);
 extern "C" __declspec(dllimport) int* _cdecl    sort_cdecl_noarg    (int* a, int start, int end, int* res);
-/*extern "C" __declspec(dllimport) int _fastcall sort_fastcall_noarg (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
-extern "C" __declspec(dllimport) int _stdcall  sort_stdcall        (int* a, int length, int* pos_res, int* neg_res, int* neg_count);
-extern "C" __declspec(dllimport) int _cdecl    sort_cdecl          (int* a, int length, int* pos_res, int* neg_res, int* neg_count);*/
+extern "C" __declspec(dllimport) int* _fastcall sort_fastcall_noarg (int* a, int start, int end, int* res);
+extern "C" __declspec(dllimport) int* _stdcall  sort_stdcall        (int* a, int start, int end, int* res);
+extern "C" __declspec(dllimport) int* _cdecl    sort_cdecl          (int* a, int start, int end, int* res);
 
 int* sort_native(int* a, int start, int end, int* res) {
 	int i = 0;
@@ -22,19 +22,15 @@ int* sort_native(int* a, int start, int end, int* res) {
 	if (length <= 1) return res;
 
 	for (i = 0; i < length - 1; i++) {
-		int min_element = res[i];
 		int min_element_index = i;
 
-		for (int j = i + 1; j < length; j++) {
-			if (res[j] < min_element) {
+		for (int j = i + 1; j < length; j++) 
+			if (res[j] < res[min_element_index]) 
 				min_element_index = j;
-				min_element = res[j];
-			}
-		}
 
-		int tmp = min_element;
+		int tmp = res[min_element_index];
 		res[min_element_index] = res[i];
-		res[i] = min_element;
+		res[i] = tmp;
 	}
 
 	return res;
@@ -187,16 +183,16 @@ void test_function(TestedFunction func_to_test) {
 int main() {
 	std::cout << "Native function:" << std::endl;
 	test_function(sort_native);
-	/*std::cout << "__cdecl auto parameters:" << std::endl;
+	std::cout << "__cdecl auto parameters:" << std::endl;
 	test_function(sort_cdecl);
 	std::cout << "__stdcall auto parameters:" << std::endl;
 	test_function(sort_stdcall);
-	std::cout << "__fastcall manual parameters:" << std::endl;
-	test_function(sort_fastcall_noarg);*/
 	std::cout << "__stdcall manual parameters" << std::endl;
 	test_function(sort_stdcall_noarg);
 	std::cout << "__cdecl manual parameters" << std::endl;
 	test_function(sort_cdecl_noarg);
+	std::cout << "__fastcall manual parameters:" << std::endl;
+	test_function(sort_fastcall_noarg);
 
 	
 

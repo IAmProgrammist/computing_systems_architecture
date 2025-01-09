@@ -41,13 +41,13 @@ select_sort_not_smaller:
             dec    edx
             jnz    select_sort_inner_loop
 
-            mov    edx, [ebx]    ; Обмен элементов
-            mov    [ebx], eax
-            mov    [edi], edx
+        mov    edx, [ebx]    ; Обмен элементов
+        mov    [ebx], eax
+        mov    [edi], edx
 
-            add    ebx, 4       ; Передвинуть границу отсортированного массива
-            dec    ecx
-            jnz    select_sort_outer_loop
+        add    ebx, 4       ; Передвинуть границу отсортированного массива
+        dec    ecx
+        jnz    select_sort_outer_loop
 select_sort_end:
     popad
     ret    8
@@ -131,10 +131,10 @@ sort_cdecl_noarg proc
     mov eax, 0
 
     ; Копируем данные в res
-sort_stdcall_noarg_copyloop:
+sort_cdecl_noarg_copyloop:
     ; start > end?
     cmp edx, edi
-    jg sort_stdcall_noarg_copyloop_end
+    jg sort_cdecl_noarg_copyloop_end
     
     ; ebp = res + eax * 4
     mov ebp, ebx
@@ -163,8 +163,8 @@ sort_stdcall_noarg_copyloop:
     inc eax
     inc edx
 
-    jmp sort_stdcall_noarg_copyloop
-sort_stdcall_noarg_copyloop_end:
+    jmp sort_cdecl_noarg_copyloop
+sort_cdecl_noarg_copyloop_end:
 
     push eax
     push ebx
@@ -178,81 +178,175 @@ sort_stdcall_noarg_copyloop_end:
     ret
 sort_cdecl_noarg endp
 
-; int sort_fastcall_noarg (int* a, int length, int* pos_res, int* neg_res, int* neg_count)
+; int sort_fastcall_noarg(int* a, int start, int end, int* res)
 sort_fastcall_noarg proc
     push ebp
-    ; ecx = a
-    ; edx = length
+    push edi
+    push esi
+    push ebx
 
-    ; neg_count = 0
-    mov edi, dword ptr [esp + 8 + 8]
-    mov dword ptr [edi], 0
+    mov edi, [esp + 20]   ; edi = end
+    mov ebx, [esp + 20 + 4]  ; ebx = res 
 
-    ; Используемые аргументы
+    mov eax, 0
 
-    ; Выделяем место под локальную переменную current, j, current_comparing
-    sub esp, 12
-    ; ebx будет нашим счётчиком
-    mov ebx, 0
-    ; Обнуление eax
-    xor eax, eax
+    ; Копируем данные в res
+sort_fastcall_noarg_copyloop:
+    ; start > end?
+    cmp edx, edi
+    jg sort_fastcall_noarg_copyloop_end
+    
+    ; ebp = res + eax * 4
+    mov ebp, ebx
+    add ebp, eax
+    add ebp, eax
+    add ebp, eax
+    add ebp, eax
 
+    push edi
+    push eax
+    ; edi = a + start * 4
+    mov edi, ecx
+    add edi, edx
+    add edi, edx
+    add edi, edx
+    add edi, edx
 
+    ; res[eax] = a[start]
+    mov eax, dword ptr [edi]
+    mov dword ptr [ebp], eax
+    pop eax
+    pop edi
 
-    add esp, 12
+    ; start++
+    ; eax++
+    inc eax
+    inc edx
+
+    jmp sort_fastcall_noarg_copyloop
+sort_fastcall_noarg_copyloop_end:
+
+    push eax
+    push ebx
+    call select_sort
+
+    mov eax, ebx
+    pop ebx
+    pop esi
+    pop edi
     pop ebp
     ret 2 * 4
 sort_fastcall_noarg endp
 
-; int sort_stdcall (int* a, int length, int* pos_res, int* neg_res, int* neg_count)
-sort_stdcall proc stdcall a: DWORD, len: DWORD, pos_res: DWORD, neg_res: DWORD, neg_count: DWORD
+; int sort_stdcall(int* a, int start, int end, int* res)
+sort_stdcall proc stdcall a: DWORD, index_start: DWORD, index_end: DWORD, res: DWORD
+    push edi
     push esi
-    mov ecx, a       ; ecx = a
-    mov edx, len   ; edx = length
+    push ebx
 
-    ; neg_count = 0
-    mov edi, dword ptr [neg_count]
-    mov dword ptr [edi], 0
+    mov eax, 0
 
-    ; Используемые аргументы
+    ; Копируем данные в res
+sort_stdcall_copyloop:
+    ; start > end?
+    mov esi, index_start
+    cmp esi, index_end
+    jg sort_stdcall_copyloop_end
+    
+    ; ebx = res + eax * 4
+    mov ebx, res
+    add ebx, eax
+    add ebx, eax
+    add ebx, eax
+    add ebx, eax
 
-    ; Выделяем место под локальную переменную current, j, current_comparing
-    sub esp, 12
-    ; ebx будет нашим счётчиком
-    mov ebx, 0
-    ; Обнуление eax
-    xor eax, eax
+    push edi
+    push eax
+    ; edi = a + start * 4
+    mov edi, a
+    add edi, index_start
+    add edi, index_start
+    add edi, index_start
+    add edi, index_start
 
+    ; res[eax] = a[start]
+    mov eax, dword ptr [edi]
+    mov dword ptr [ebx], eax
+    pop eax
+    pop edi
 
+    ; start++
+    ; eax++
+    inc eax
+    inc index_start
 
-    add esp, 12
+    jmp sort_stdcall_copyloop
+sort_stdcall_copyloop_end:
+
+    push eax
+    push res
+    call select_sort
+
+    mov eax, res
+    pop ebx
     pop esi
+    pop edi
     ret
 sort_stdcall endp
 
-; int sort_cdecl (int* a, int length, int* pos_res, int* neg_res, int* neg_count)
-sort_cdecl proc c a: DWORD, len: DWORD, pos_res: DWORD, neg_res: DWORD, neg_count: DWORD
-push esi
-    mov ecx, a       ; ecx = a
-    mov edx, len   ; edx = length
+; int sort_cdecl(int* a, int start, int end, int* res)
+sort_cdecl proc c a: DWORD, index_start: DWORD, index_end: DWORD, res: DWORD
+    push edi
+    push esi
+    push ebx
 
-    ; neg_count = 0
-    mov edi, dword ptr [neg_count]
-    mov dword ptr [edi], 0
+    mov eax, 0
 
-    ; Используемые аргументы
+    ; Копируем данные в res
+sort_cdecl_copyloop:
+    ; start > end?
+    mov esi, index_start
+    cmp esi, index_end
+    jg sort_cdecl_copyloop_end
+    
+    ; ebx = res + eax * 4
+    mov ebx, res
+    add ebx, eax
+    add ebx, eax
+    add ebx, eax
+    add ebx, eax
 
-    ; Выделяем место под локальную переменную current, j, current_comparing
-    sub esp, 12
-    ; ebx будет нашим счётчиком
-    mov ebx, 0
-    ; Обнуление eax
-    xor eax, eax
+    push edi
+    push eax
+    ; edi = a + start * 4
+    mov edi, a
+    add edi, index_start
+    add edi, index_start
+    add edi, index_start
+    add edi, index_start
 
+    ; res[eax] = a[start]
+    mov eax, dword ptr [edi]
+    mov dword ptr [ebx], eax
+    pop eax
+    pop edi
 
+    ; start++
+    ; eax++
+    inc eax
+    inc index_start
 
-    add esp, 12
+    jmp sort_cdecl_copyloop
+sort_cdecl_copyloop_end:
+
+    push eax
+    push res
+    call select_sort
+
+    mov eax, res
+    pop ebx
     pop esi
+    pop edi
     ret
 sort_cdecl endp
 
